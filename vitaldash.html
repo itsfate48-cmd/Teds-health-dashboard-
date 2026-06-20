@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitalOS — My Health Dashboard</title>
+<style>
+  :root {
+    --neon: #C8F135;
+    --surface: #0d0e10;
+    --surface2: #1a1c1e;
+    --surface3: #222426;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --red: #FF4757;
+    --blue: #378ADD;
+    --amber: #EF9F27;
+    --teal: #1D9E75;
+    --purple: #7F77DD;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--surface); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header { background: #0a0b0c; border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--neon); }
+  .logo-text { font-size: 18px; font-weight: 600; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--neon); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--surface3); border: 2px solid var(--neon); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--neon); font-weight: 600; cursor: pointer; }
+  #date-display { font-size: 12px; color: var(--text-muted); }
+
+  /* NAV */
+  .nav { display: flex; background: #0a0b0c; border-bottom: 1px solid var(--border); padding: 0 24px; overflow-x: auto; }
+  .nav-tab { padding: 12px 18px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--neon); border-bottom-color: var(--neon); }
+  .nav-tab svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* CONTENT */
+  .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 700px) { .grid-4 { grid-template-columns: 1fr 1fr; } .grid-2, .grid-3 { grid-template-columns: 1fr; } .panel-row { grid-template-columns: 1fr !important; } }
+
+  /* CARDS */
+  .card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .card-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .card-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* METRICS */
+  .metric-big { font-size: 34px; font-weight: 600; line-height: 1; }
+  .metric-unit { font-size: 14px; color: var(--text-muted); font-weight: 400; margin-left: 2px; }
+  .metric-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-green { background: rgba(29,158,117,0.2); color: #1D9E75; }
+  .badge-red { background: rgba(255,71,87,0.2); color: #FF4757; }
+  .badge-amber { background: rgba(239,159,39,0.2); color: #EF9F27; }
+  .badge-neon { background: rgba(200,241,53,0.15); color: var(--neon); }
+  .badge-blue { background: rgba(55,138,221,0.2); color: var(--blue); }
+  .badge-gray { background: var(--surface3); color: var(--text-muted); }
+
+  /* PROGRESS BARS */
+  .progress-bg { background: var(--surface3); border-radius: 4px; height: 7px; margin: 10px 0 5px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .fill-neon { background: var(--neon); }
+  .fill-red { background: var(--red); }
+  .fill-amber { background: var(--amber); }
+  .fill-blue { background: var(--blue); }
+  .fill-teal { background: var(--teal); }
+  .fill-purple { background: var(--purple); }
+
+  /* ALERTS */
+  .alert-box { border-radius: 10px; padding: 16px; margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .alert-red { background: rgba(255,71,87,0.08); border: 1px solid rgba(255,71,87,0.25); }
+  .alert-amber { background: rgba(239,159,39,0.08); border: 1px solid rgba(239,159,39,0.25); }
+  .alert-neon { background: rgba(200,241,53,0.06); border: 1px solid rgba(200,241,53,0.2); }
+  .alert-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .alert-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .alert-body { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+  /* TRAINER TIP */
+  .trainer-tip { background: rgba(200,241,53,0.04); border: 1px solid rgba(200,241,53,0.15); border-radius: 10px; padding: 16px; margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .trainer-avatar { width: 38px; height: 38px; border-radius: 50%; background: rgba(200,241,53,0.12); border: 1.5px solid rgba(200,241,53,0.35); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .trainer-name { font-size: 11px; color: var(--neon); font-weight: 600; margin-bottom: 4px; letter-spacing: 0.3px; }
+  .trainer-msg { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; cursor: pointer; border: none; font-family: inherit; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-neon { background: var(--neon); color: #0d0e10; font-weight: 600; }
+  .btn-ghost { background: var(--surface3); color: var(--text); border: 1px solid var(--border); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* EDITABLE FIELDS */
+  .editable { background: transparent; border: none; border-bottom: 1px dashed rgba(255,255,255,0.2); color: var(--text); font-family: inherit; font-size: inherit; font-weight: inherit; outline: none; min-width: 40px; transition: border-color 0.2s; }
+  .editable:focus { border-bottom-color: var(--neon); }
+  .editable::placeholder { color: var(--text-muted); font-style: italic; }
+  .edit-hint { font-size: 11px; color: var(--text-muted); text-align: right; margin-bottom: 12px; font-style: italic; }
+
+  /* BLOODWORK ROWS */
+  .bw-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+  .bw-row:last-child { border-bottom: none; }
+  .bw-name { font-size: 13px; color: var(--text-muted); flex: 1; }
+  .bw-val-wrap { display: flex; align-items: center; gap: 8px; }
+  .bw-val { font-size: 14px; font-weight: 600; }
+  .bw-range-label { font-size: 11px; color: var(--text-muted); }
+
+  /* MEAL ROWS */
+  .meal-row { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .meal-row:last-child { border-bottom: none; }
+  .meal-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .meal-info { flex: 1; }
+  .meal-name { font-size: 13px; font-weight: 500; }
+  .meal-macro { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .meal-cals { font-size: 14px; font-weight: 600; color: var(--neon); white-space: nowrap; }
+
+  /* RING ROWS */
+  .ring-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .ring-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .ring-bar { flex: 1; }
+  .ring-label { font-size: 12px; color: var(--text-muted); }
+  .ring-val { font-size: 15px; font-weight: 600; }
+
+  /* CHART BARS */
+  .chart-bars { display: flex; align-items: flex-end; gap: 8px; height: 80px; margin: 14px 0 6px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; border-radius: 3px 3px 0 0; }
+  .bar-day { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px; }
+
+  /* SLEEP STAGES */
+  .sleep-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px; margin: 14px 0 8px; }
+  .sleep-seg { height: 100%; border-radius: 2px; }
+
+  /* PANEL ROW */
+  .panel-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  /* CUSTOMIZE TOGGLE */
+  .customize-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .customize-row:last-child { border-bottom: none; }
+  .toggle { width: 38px; height: 22px; border-radius: 11px; background: var(--surface3); border: 1px solid var(--border); position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.2s; }
+  .toggle.on { background: var(--neon); border-color: var(--neon); }
+  .toggle-dot { width: 16px; height: 16px; border-radius: 50%; background: #888; position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+  .toggle.on .toggle-dot { left: 18px; background: #0d0e10; }
+
+  /* INPUT FIELDS */
+  .field-input { background: var(--surface3); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: inherit; outline: none; width: 100px; text-align: right; transition: border-color 0.2s; }
+  .field-input:focus { border-color: var(--neon); }
+
+  /* MACRO ROW */
+  .macro-row { display: flex; gap: 14px; }
+  .macro-item { flex: 1; }
+  .macro-label { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+  .macro-val { font-size: 16px; font-weight: 600; }
+
+  /* ZONE BAR */
+  .zone-bar { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; margin: 12px 0 8px; }
+
+  /* STEP NUMBER BIG */
+  .steps-giant { font-size: 48px; font-weight: 700; color: var(--neon); line-height: 1; }
+
+  /* STEPS GOAL ROW */
+  .steps-goal-row { display: flex; justify-content: space-between; align-items: flex-end; }
+
+  /* LEGEND ROW */
+  .legend-row { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* SAVE STATUS */
+  .save-status { font-size: 11px; color: var(--neon); margin-left: 8px; opacity: 0; transition: opacity 0.3s; }
+  .save-status.show { opacity: 1; }
+
+  /* SECTION DIVIDER */
+  .section-divider { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin: 20px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 13px; }
+  .empty-state .empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* ADD ROW BUTTON */
+  .add-row-btn { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); cursor: pointer; padding: 10px 0; border-top: 1px dashed var(--border); margin-top: 4px; transition: color 0.2s; }
+  .add-row-btn:hover { color: var(--neon); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div class="logo-text">vital<span>OS</span></div>
+  </div>
+  <div class="header-right">
+    <span id="date-display"></span>
+    <div class="avatar" id="avatar-initials" onclick="promptName()">?</div>
+  </div>
+</div>
+
+<div class="nav">
+  <div class="nav-tab active" onclick="switchTab('overview')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Overview
+  </div>
+  <div class="nav-tab" onclick="switchTab('steps')">
+    <svg viewBox="0 0 24 24"><path d="M13 4v4l3 3-4 4-3-3-5 5"/></svg>
+    Steps
+  </div>
+  <div class="nav-tab" onclick="switchTab('nutrition')">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10"/><path d="M12 6v6l4 2"/></svg>
+    Nutrition
+  </div>
+  <div class="nav-tab" onclick="switchTab('bloodwork')">
+    <svg viewBox="0 0 24 24"><path d="M12 2l6 10H6z"/><path d="M6 12a6 6 0 0 0 12 0"/></svg>
+    Bloodwork
+  </div>
+  <div class="nav-tab" onclick="switchTab('aura')">
+    <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    Aura Ring
+  </div>
+  <div class="nav-tab" onclick="switchTab('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+    Customize
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ===== OVERVIEW ===== -->
+  <div id="tab-overview" class="tab-content active">
+    <p class="edit-hint">✏️ Click any underlined field to enter your data</p>
+
+    <div id="step-alert-overview" class="alert-box alert-amber" style="display:none">
+      <span class="alert-icon">⚠️</span>
+      <div>
+        <div class="alert-title" style="color:var(--amber)" id="overview-alert-title">Step goal reminder</div>
+        <div class="alert-body" id="overview-alert-body"></div>
+      </div>
+    </div>
+
+    <div class="trainer-tip">
+      <div class="trainer-avatar">🏋️</div>
+      <div>
+        <div class="trainer-name">AI Trainer · Your Coach</div>
+        <div class="trainer-msg">Welcome to VitalOS! Fill in your details across each tab to get personalised insights, step reminders, and nutrition guidance tailored to your goals.</div>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-title">👟 Steps today</div>
+        <div class="steps-giant" id="ov-steps">—</div>
+        <div class="progress-bg"><div class="progress-fill fill-neon" id="ov-step-bar" style="width:0%"></div></div>
+        <div class="metric-sub" id="ov-step-pct">Enter your steps in the Steps tab</div>
+      </div>
+      <div class="card">
+        <div class="card-title">❤️ Resting HR</div>
+        <div class="metric-big"><input class="editable" id="ov-hr" placeholder="—" style="width:60px"> <span class="metric-unit">bpm</span></div>
+        <div class="metric-sub" style="margin-top:10px"><span class="badge badge-gray">Enter value</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌙 Sleep</div>
+        <div class="metric-big"><input class="editable" id="ov-sleep" placeholder="—" style="width:50px"> <span class="metric-unit">hrs</span></div>
+        <div class="metric-sub" style="margin-top:10px"><span class="badge badge-gray">Enter last night</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔥 Calories today</div>
+        <div class="metric-big"><input class="editable" id="ov-cals" placeholder="—" style="width:70px"> <span class="metric-unit">kcal</span></div>
+        <div class="progress-bg"><div class="progress-fill fill-amber" id="ov-cal-bar" style="width:0%"></div></div>
+        <div class="metric-sub" id="ov-cal-sub">Set target in Customize</div>
+      </div>
+    </div>
+
+    <div class="panel-row">
+      <div class="card">
+        <div class="card-title">📊 Steps — last 7 days</div>
+        <div class="chart-bars" id="overview-week-bars">
+          <div class="bar-col"><div class="bar fill-neon" style="height:0%;background:var(--surface3);opacity:1;min-height:4px"></div><div class="bar-day">Mon<br>—</div></div>
+          <div class="bar-col"><div class="bar" style="height:0%;background:var(--surface3);min-height:4px"></div><div class="bar-day">Tue<br>—</div></div>
+          <div class="bar-col"><div class="bar" style="height:0%;background:var(--surface3);min-height:4px"></div><div class="bar-day">Wed<br>—</div></div>
+          <div class="bar-col"><div class="bar" style="height:0%;background:var(--surface3);min-height:4px"></div><div class="bar-day">Thu<br>—</div></div>
+          <div class="bar-col"><div class="bar" style="height:0%;background:var(--surface3);min-height:4px"></div><div class="bar-day">Fri<br>—</div></div>
+          <div class="bar-col"><div class="bar" style="height:0%;background:var(--surface3);min-height:4px"></div><div class="bar-day">Sat<br>—</div></div>
+          <div class="bar-col"><div class="bar" style="height:0%;background:var(--surface3);min-height:4px"></div><div class="bar-day">Sun<br>—</div></div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--neon)"></div>Goal hit</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Close</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Missed</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--surface3)"></div>No data</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🩸 Bloodwork flags</div>
+        <div id="ov-bloodwork-summary">
+          <div class="empty-state" style="padding:20px 0">
+            <div>Enter your blood panel in the Bloodwork tab</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="switchTab('bloodwork')" style="width:100%;justify-content:center;margin-top:10px">View full panel →</button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🥗 Today's nutrition</div>
+        <div class="macro-row">
+          <div class="macro-item"><div class="macro-label">Protein</div><div class="macro-val" style="color:var(--blue)" id="ov-protein">—g</div><div class="progress-bg"><div class="progress-fill fill-blue" id="ov-protein-bar" style="width:0%"></div></div></div>
+          <div class="macro-item"><div class="macro-label">Carbs</div><div class="macro-val" style="color:var(--amber)" id="ov-carbs">—g</div><div class="progress-bg"><div class="progress-fill fill-amber" id="ov-carbs-bar" style="width:0%"></div></div></div>
+          <div class="macro-item"><div class="macro-label">Fat</div><div class="macro-val" style="color:var(--red)" id="ov-fat">—g</div><div class="progress-bg"><div class="progress-fill fill-red" id="ov-fat-bar" style="width:0%"></div></div></div>
+        </div>
+        <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="switchTab('nutrition')">Log nutrition →</button></div>
+      </div>
+      <div class="card">
+        <div class="card-title">💍 Aura Ring — last night</div>
+        <div id="ov-aura-summary">
+          <div class="empty-state" style="padding:16px 0">
+            <div>Enter your Aura Ring data in the Aura Ring tab</div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="switchTab('aura')" style="margin-top:6px">View Aura data →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STEPS ===== -->
+  <div id="tab-steps" class="tab-content">
+    <p class="edit-hint">✏️ Enter your step counts — the dashboard will track your 10,000/day goal automatically</p>
+
+    <div id="step-main-alert" class="alert-box" style="display:none">
+      <span class="alert-icon" id="step-alert-icon">⚠️</span>
+      <div>
+        <div class="alert-title" id="step-alert-title"></div>
+        <div class="alert-body" id="step-alert-body"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">👟 Today's progress</div>
+      <div class="steps-goal-row">
+        <div>
+          <div class="steps-giant" id="steps-today-display">—</div>
+          <div class="metric-sub" style="margin-top:6px">steps today</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:26px;font-weight:700;color:var(--neon)" id="steps-pct-display">—%</div>
+          <div class="metric-sub">of <span id="steps-goal-display">10,000</span> goal</div>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:6px">Enter today's steps:</label>
+        <input type="number" class="field-input" id="steps-today-input" placeholder="e.g. 7500" style="width:140px" oninput="updateSteps()">
+      </div>
+      <div class="progress-bg" style="height:12px;margin-top:14px"><div class="progress-fill fill-neon" id="steps-main-bar" style="width:0%;height:100%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:var(--text-muted)">
+        <span>0</span><span id="steps-midpoint">5,000</span><span id="steps-max-label">10,000</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">📅 Weekly step log</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Enter each day's steps. Chart updates automatically.</p>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:14px">
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Mon</div>
+          <input type="number" class="field-input" id="day-Mon" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Tue</div>
+          <input type="number" class="field-input" id="day-Tue" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Wed</div>
+          <input type="number" class="field-input" id="day-Wed" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Thu</div>
+          <input type="number" class="field-input" id="day-Thu" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Fri</div>
+          <input type="number" class="field-input" id="day-Fri" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sat</div>
+          <input type="number" class="field-input" id="day-Sat" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sun</div>
+          <input type="number" class="field-input" id="day-Sun" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateWeekChart()">
+        </div>
+      </div>
+      <div class="chart-bars" id="week-chart" style="height:90px">
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Mon"></div><div class="bar-day" id="lbl-Mon">Mon<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Tue"></div><div class="bar-day" id="lbl-Tue">Tue<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Wed"></div><div class="bar-day" id="lbl-Wed">Wed<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Thu"></div><div class="bar-day" id="lbl-Thu">Thu<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Fri"></div><div class="bar-day" id="lbl-Fri">Fri<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Sat"></div><div class="bar-day" id="lbl-Sat">Sat<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="bar-Sun"></div><div class="bar-day" id="lbl-Sun">Sun<br>—</div></div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--neon)"></div>Hit 10k</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Close (7k–10k)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Missed</div>
+      </div>
+    </div>
+
+    <div class="card" id="compensation-card" style="display:none">
+      <div class="card-title">💪 Compensation plan</div>
+      <div id="compensation-body" style="font-size:13px;color:var(--text-muted);line-height:1.7"></div>
+    </div>
+  </div>
+
+  <!-- ===== NUTRITION ===== -->
+  <div id="tab-nutrition" class="tab-content">
+    <p class="edit-hint">✏️ Log your meals and macros — your AI nutritionist will track progress toward your targets</p>
+
+    <div class="grid-2" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-title">🔥 Calories</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+          <input type="number" class="field-input" id="cal-eaten" placeholder="0" style="width:90px;font-size:22px;padding:4px 8px" oninput="updateNutrition()">
+          <span style="color:var(--text-muted);font-size:13px">/ <span id="cal-target-display">—</span> kcal</span>
+        </div>
+        <div class="progress-bg"><div class="progress-fill fill-amber" id="cal-bar" style="width:0%"></div></div>
+        <div class="metric-sub" id="cal-remaining-sub">Set calorie target in Customize</div>
+      </div>
+      <div class="card">
+        <div class="card-title">💧 Hydration</div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+          <input type="number" class="field-input" id="water-drunk" placeholder="0.0" step="0.1" style="width:90px;font-size:22px;padding:4px 8px" oninput="updateWater()">
+          <span style="color:var(--text-muted);font-size:13px">/ <span id="water-target-display">2.5</span> L</span>
+        </div>
+        <div class="progress-bg"><div class="progress-fill fill-blue" id="water-bar" style="width:0%"></div></div>
+        <div class="metric-sub" id="water-sub">Log your water intake in litres</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">📊 Macros</div>
+      <div class="macro-row">
+        <div class="macro-item">
+          <div class="macro-label">Protein (g)</div>
+          <input type="number" class="field-input" id="mac-protein" placeholder="0" style="width:80px" oninput="updateMacros()">
+          <div class="progress-bg"><div class="progress-fill fill-blue" id="mac-protein-bar" style="width:0%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted)">Target: <span id="mac-protein-target">—</span>g</div>
+        </div>
+        <div class="macro-item">
+          <div class="macro-label">Carbs (g)</div>
+          <input type="number" class="field-input" id="mac-carbs" placeholder="0" style="width:80px" oninput="updateMacros()">
+          <div class="progress-bg"><div class="progress-fill fill-amber" id="mac-carbs-bar" style="width:0%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted)">Target: <span id="mac-carbs-target">—</span>g</div>
+        </div>
+        <div class="macro-item">
+          <div class="macro-label">Fat (g)</div>
+          <input type="number" class="field-input" id="mac-fat" placeholder="0" style="width:80px" oninput="updateMacros()">
+          <div class="progress-bg"><div class="progress-fill fill-red" id="mac-fat-bar" style="width:0%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted)">Target: <span id="mac-fat-target">—</span>g</div>
+        </div>
+        <div class="macro-item">
+          <div class="macro-label">Fibre (g)</div>
+          <input type="number" class="field-input" id="mac-fibre" placeholder="0" style="width:80px" oninput="updateMacros()">
+          <div class="progress-bg"><div class="progress-fill fill-teal" id="mac-fibre-bar" style="width:0%"></div></div>
+          <div style="font-size:11px;color:var(--text-muted)">Target: <span id="mac-fibre-target">—</span>g</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🍽️ Meal log</div>
+      <div id="meal-log-rows">
+        <div class="meal-row" id="meal-0">
+          <div class="meal-dot" style="background:var(--blue)"></div>
+          <div class="meal-info">
+            <input class="editable meal-name" placeholder="Meal name (e.g. Breakfast)" style="width:160px">
+            <div class="meal-macro"><input class="editable" placeholder="Macros (e.g. 30g P · 50g C)" style="width:180px;font-size:11px"></div>
+          </div>
+          <input type="number" class="editable meal-cals" placeholder="kcal" style="width:60px;text-align:right">
+        </div>
+        <div class="meal-row" id="meal-1">
+          <div class="meal-dot" style="background:var(--amber)"></div>
+          <div class="meal-info">
+            <input class="editable meal-name" placeholder="Meal name" style="width:160px">
+            <div class="meal-macro"><input class="editable" placeholder="Macros" style="width:180px;font-size:11px"></div>
+          </div>
+          <input type="number" class="editable meal-cals" placeholder="kcal" style="width:60px;text-align:right">
+        </div>
+        <div class="meal-row" id="meal-2">
+          <div class="meal-dot" style="background:var(--teal)"></div>
+          <div class="meal-info">
+            <input class="editable meal-name" placeholder="Meal name" style="width:160px">
+            <div class="meal-macro"><input class="editable" placeholder="Macros" style="width:180px;font-size:11px"></div>
+          </div>
+          <input type="number" class="editable meal-cals" placeholder="kcal" style="width:60px;text-align:right">
+        </div>
+        <div class="meal-row" id="meal-3">
+          <div class="meal-dot" style="background:var(--purple)"></div>
+          <div class="meal-info">
+            <input class="editable meal-name" placeholder="Meal name" style="width:160px">
+            <div class="meal-macro"><input class="editable" placeholder="Macros" style="width:180px;font-size:11px"></div>
+          </div>
+          <input type="number" class="editable meal-cals" placeholder="kcal" style="width:60px;text-align:right">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BLOODWORK ===== -->
+  <div id="tab-bloodwork" class="tab-content">
+    <p class="edit-hint">✏️ Enter your blood test results — the dashboard flags anything outside the normal range</p>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🩸 Blood panel</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Enter your values. Status is calculated automatically based on standard reference ranges.</div>
+
+      <div id="bloodwork-rows">
+        <!-- rows injected by JS -->
+      </div>
+
+      <div class="add-row-btn" onclick="addBloodworkRow()">
+        <span style="font-size:18px">+</span> Add another marker
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📅 Last tested</div>
+      <input type="date" class="field-input" id="bw-date" style="width:180px">
+      <div style="margin-top:10px;font-size:12px;color:var(--text-muted)">Recommended: full panel every 6–12 months</div>
+    </div>
+
+    <!-- AI LAB INSIGHTS -->
+    <div class="card" style="margin-top:14px;border-color:rgba(200,241,53,0.2)">
+      <div class="card-title" style="color:var(--neon)">
+        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z"/><path d="M12 12c-5.33 0-8 2.67-8 4v2h16v-2c0-1.33-2.67-4-8-4z"/></svg>
+        Lab Insights — AI Health Assistant
+      </div>
+
+      <div class="trainer-tip" style="margin-bottom:20px">
+        <div class="trainer-avatar">🔬</div>
+        <div>
+          <div class="trainer-name">Lab Analyst · Vibrant America Panel — 09 Apr 2025</div>
+          <div class="trainer-msg">I've cross-referenced your full panel. You have <strong style="color:var(--red)">3 high-priority flags</strong> and <strong style="color:var(--amber)">4 markers to watch</strong>. Here's what's driving them and exactly what to do about each one.</div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="color:var(--red);border-color:rgba(255,71,87,0.2)">🔴 High Priority — Act on These</div>
+
+      <div class="alert-box alert-red" style="margin-bottom:12px">
+        <span class="alert-icon">🔥</span>
+        <div>
+          <div class="alert-title" style="color:var(--red)">hs-CRP 3.9 mg/L — High-Risk Inflammation (ref: ≤0.9)</div>
+          <div class="alert-body">You're in the high-risk cardiovascular zone (≥3.1). The good news: down from 8.3 in October — you're moving in the right direction, but 3.9 is still well above optimal. Elevated CRP is likely connected to your poor sleep (5.79 hrs last night), your elevated GGT, and chronic low-grade stress.<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Target 7.5–8 hrs sleep (this alone can drop CRP significantly). Add omega-3 fish oil 2–4g EPA+DHA daily. Reduce alcohol (your GGT is also elevated). Anti-inflammatory diet: turmeric, leafy greens, olive oil, berries. Retest in 90 days — target below 1.0 mg/L.</div>
+        </div>
+      </div>
+
+      <div class="alert-box alert-red" style="margin-bottom:12px">
+        <span class="alert-icon">⚡</span>
+        <div>
+          <div class="alert-title" style="color:var(--red)">Estradiol &lt;10 pg/mL — Critically Low (ref: 25.8–60.7)</div>
+          <div class="alert-body">This has been critically low since October 2024 and is unchanged at &lt;10. In men, estradiol is essential for bone density, cardiovascular health, libido, mood regulation, and joint protection. A value this low is associated with fatigue, brain fog, low motivation, and accelerated bone loss. This is likely your most impactful deficit.<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Almost certainly connected to your critically low DHEA-S below — DHEA is the precursor. Discuss DHEA supplementation (25–50mg/day) with Dr. Austin as a first step. Ensure adequate dietary fat and zinc. Rule out any aromatase-inhibiting supplements you may be taking. Don't ignore this one.</div>
+        </div>
+      </div>
+
+      <div class="alert-box alert-red" style="margin-bottom:12px">
+        <span class="alert-icon">📉</span>
+        <div>
+          <div class="alert-title" style="color:var(--red)">DHEA-S 15.0 µg/dL — Critically Low (ref: 44.3–331.0)</div>
+          <div class="alert-body">Your DHEA-S is at roughly 3% of the upper reference range — extremely low even at 53. It was 13.2 in October so it's barely moved. DHEA-S is your body's master adrenal hormone and the upstream precursor to both testosterone and estradiol. This single deficiency is likely cascading into your low estradiol, your fatigue, low readiness score (58), and poor sleep recovery.<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Discuss DHEA replacement (25–50mg/day) with your provider — this is the most direct intervention. Address root causes: your sleep deficit is chronically suppressing adrenal output, reduce chronic stress, reduce alcohol. Consider ashwagandha and rhodiola for adrenal support. Getting your sleep to 7.5+ hrs is non-negotiable for recovery here.</div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="color:var(--amber);border-color:rgba(239,159,39,0.2);margin-top:8px">🟡 Watch Closely</div>
+
+      <div class="alert-box alert-amber" style="margin-bottom:12px">
+        <span class="alert-icon">🫁</span>
+        <div>
+          <div class="alert-title" style="color:var(--amber)">GGT 71 U/L — Elevated Liver Enzyme (ref: ≤60), down from 85</div>
+          <div class="alert-body">GGT is the most sensitive early marker for alcohol intake, fatty liver, and metabolic stress. Your ALT (29) and AST (21) are both healthy, so this isn't advanced liver damage — but GGT is the canary. It's improving, which is good, but still above range.<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Eliminate or significantly reduce alcohol for 60 days and retest — GGT is highly responsive. Add NAC (600mg/day), milk thistle (silymarin), and eat more cruciferous vegetables (broccoli, cauliflower). Avoid unnecessary supplements processed by the liver.</div>
+        </div>
+      </div>
+
+      <div class="alert-box alert-amber" style="margin-bottom:12px">
+        <span class="alert-icon">❤️</span>
+        <div>
+          <div class="alert-title" style="color:var(--amber)">Homocysteine 11 µmol/L — Moderate Cardiovascular Risk (ref: ≤9)</div>
+          <div class="alert-body">Elevated homocysteine is an independent cardiovascular risk factor, and with your hs-CRP also elevated, your cardiac risk profile needs attention. It's been stable at 11 since October. Most commonly caused by low B12, B6, or folate — notably your B12 wasn't tested and your MCV is elevated (a classic B12 deficiency sign).<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Start methylated B vitamins — methylfolate (400–800mcg), methylcobalamin B12 (1000mcg), and P5P B6 (25–50mg). Get B12 and folate levels tested at your next draw. Reduce red meat and ultra-processed foods. Target homocysteine below 7 for optimal cardiovascular protection.</div>
+        </div>
+      </div>
+
+      <div class="alert-box alert-amber" style="margin-bottom:12px">
+        <span class="alert-icon">🔬</span>
+        <div>
+          <div class="alert-title" style="color:var(--amber)">MCV 95.0 fL — Mildly Elevated Red Cell Size (ref: ≤92.2)</div>
+          <div class="alert-body">Elevated MCV means your red blood cells are slightly larger than normal (macrocytosis). The most common causes: B12 or folate deficiency, alcohol use, or thyroid underfunction. All three are plausible given your elevated homocysteine, GGT, and Free T3/T4 sitting at the low end of range. Was also elevated in October (96.9) so this is persistent.<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Test B12 and folate at your next draw — this is the most likely cause. If low, start methylated B12. Reducing alcohol will also help. Monitor Free T3 and T4 as both are at the low end of range.</div>
+        </div>
+      </div>
+
+      <div class="alert-box alert-amber" style="margin-bottom:12px">
+        <span class="alert-icon">🩺</span>
+        <div>
+          <div class="alert-title" style="color:var(--amber)">Free PSA% 19.2% — Below Threshold (ref: ≥30%)</div>
+          <div class="alert-body">Your total PSA (0.73 ng/mL) is well within normal and stable. However, a Free PSA% below 30% statistically raises the likelihood of prostate cancer when PSA rises in future. At this stage it's not urgent but warrants annual monitoring and a PSA velocity trend over time.<br><br>
+          <strong style="color:var(--text)">What to do:</strong> Keep tracking PSA annually. Discuss PSA velocity monitoring with your provider. Lifestyle: lycopene (cooked tomatoes), zinc, selenium, regular exercise, and maintaining healthy testosterone all support prostate health.</div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="color:var(--teal);border-color:rgba(29,158,117,0.2);margin-top:8px">✅ Looking Good</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+        <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--teal);font-weight:600;letter-spacing:0.5px;margin-bottom:8px">METABOLIC</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.9">HbA1c 5.3% ✓<br>ALT 29 / AST 21 ✓<br>Kidney function eGFR 90 ✓<br>Ferritin 193 ✓<br>Iron 104 ✓</div>
+        </div>
+        <div style="background:rgba(29,158,117,0.07);border:1px solid rgba(29,158,117,0.18);border-radius:8px;padding:12px">
+          <div style="font-size:11px;color:var(--teal);font-weight:600;letter-spacing:0.5px;margin-bottom:8px">HORMONES & GENETICS</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.9">Total Testosterone 503 ✓<br>TSH 1.58 (optimal range) ✓<br>Cortisol 9.5 ✓<br>ApoE E3/E3 — no elevated cardiac gene risk ✓</div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="margin-top:4px">📋 Your 6 Priority Actions</div>
+      <div style="font-size:13px;line-height:2.2;color:var(--text-muted);padding:4px 0">
+        <div>1. 🛌 <strong style="color:var(--text)">Sleep 7.5–8 hrs every night</strong> — your single biggest lever for CRP, DHEA-S, and readiness</div>
+        <div>2. 🍷 <strong style="color:var(--text)">Audit alcohol intake</strong> — directly driving GGT elevation and systemic inflammation</div>
+        <div>3. 💊 <strong style="color:var(--text)">Discuss DHEA supplementation with Dr. Austin</strong> — will likely lift Estradiol and energy too</div>
+        <div>4. 🧬 <strong style="color:var(--text)">Test B12 + folate at next draw</strong> — high homocysteine + elevated MCV both point here</div>
+        <div>5. 🐟 <strong style="color:var(--text)">Omega-3 2–4g EPA+DHA daily</strong> — target hs-CRP below 1.0 mg/L within 90 days</div>
+        <div>6. 📆 <strong style="color:var(--text)">Retest in 90 days</strong> — prioritise CRP, DHEA-S, Estradiol, GGT, B12, folate</div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text-muted);line-height:1.6">
+        ⚕️ This analysis is for informational purposes only and does not constitute medical advice. Please consult your healthcare provider before making changes to medications or supplements. Results from Vibrant America Clinical Laboratory, specimen collected 09 Apr 2025.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AURA RING ===== -->
+  <div id="tab-aura" class="tab-content">
+    <p class="edit-hint">✏️ Enter your Oura Ring scores from the Oura app</p>
+
+    <div class="grid-4" style="margin-bottom:14px">
+      <div class="card">
+        <div class="card-title">⚡ Readiness</div>
+        <div class="metric-big" style="color:var(--neon)"><input class="editable" id="aura-readiness" placeholder="—" style="width:50px;font-size:32px;color:var(--neon)" oninput="updateAuraOverview()"></div>
+        <div class="metric-sub">/ 100</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌙 Sleep score</div>
+        <div class="metric-big" style="color:var(--blue)"><input class="editable" id="aura-sleep-score" placeholder="—" style="width:50px;font-size:32px;color:var(--blue)" oninput="updateAuraOverview()"></div>
+        <div class="metric-sub">/ 100</div>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 HRV</div>
+        <div class="metric-big"><input class="editable" id="aura-hrv" placeholder="—" style="width:60px"> <span class="metric-unit">ms</span></div>
+        <div class="metric-sub" style="margin-top:8px"><span class="badge badge-gray">Enter value</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌡️ Body temp</div>
+        <div class="metric-big"><input class="editable" id="aura-temp" placeholder="—" style="width:50px"> <span class="metric-unit">°C</span></div>
+        <div class="metric-sub" style="margin-top:6px">vs baseline</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">😴 Sleep stages — last night</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="macro-label">Total sleep (hrs)</div>
+          <input type="number" class="field-input" id="sleep-total" placeholder="e.g. 7.5" step="0.1" style="width:120px" oninput="updateSleepBar()">
+        </div>
+        <div>
+          <div class="macro-label">Deep sleep (hrs)</div>
+          <input type="number" class="field-input" id="sleep-deep" placeholder="e.g. 1.5" step="0.1" style="width:120px" oninput="updateSleepBar()">
+        </div>
+        <div>
+          <div class="macro-label">REM sleep (hrs)</div>
+          <input type="number" class="field-input" id="sleep-rem" placeholder="e.g. 2.0" step="0.1" style="width:120px" oninput="updateSleepBar()">
+        </div>
+        <div>
+          <div class="macro-label">Awake time (hrs)</div>
+          <input type="number" class="field-input" id="sleep-awake" placeholder="e.g. 0.3" step="0.1" style="width:120px" oninput="updateSleepBar()">
+        </div>
+      </div>
+      <div class="sleep-bar" id="sleep-stage-bar" style="background:var(--surface3)">
+        <div style="width:100%;height:100%;background:var(--surface3);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted)">Enter sleep data above</div>
+      </div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div>Deep</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>REM</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--blue);opacity:0.5"></div>Light</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#444"></div>Awake</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📊 HRV — 7-day log</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:14px">
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Mon</div><input type="number" class="field-input" id="hrv-Mon" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Tue</div><input type="number" class="field-input" id="hrv-Tue" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Wed</div><input type="number" class="field-input" id="hrv-Wed" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Thu</div><input type="number" class="field-input" id="hrv-Thu" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Fri</div><input type="number" class="field-input" id="hrv-Fri" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sat</div><input type="number" class="field-input" id="hrv-Sat" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+        <div style="text-align:center"><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Sun</div><input type="number" class="field-input" id="hrv-Sun" placeholder="—" style="width:100%;text-align:center;font-size:12px;padding:5px" oninput="updateHRVChart()"></div>
+      </div>
+      <div class="chart-bars" id="hrv-chart" style="height:80px">
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Mon"></div><div class="bar-day" id="hrv-lbl-Mon">Mon<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Tue"></div><div class="bar-day" id="hrv-lbl-Tue">Tue<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Wed"></div><div class="bar-day" id="hrv-lbl-Wed">Wed<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Thu"></div><div class="bar-day" id="hrv-lbl-Thu">Thu<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Fri"></div><div class="bar-day" id="hrv-lbl-Fri">Fri<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Sat"></div><div class="bar-day" id="hrv-lbl-Sat">Sat<br>—</div></div>
+        <div class="bar-col"><div class="bar" style="height:4px;background:var(--surface3)" id="hrv-bar-Sun"></div><div class="bar-day" id="hrv-lbl-Sun">Sun<br>—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CUSTOMIZE ===== -->
+  <div id="tab-settings" class="tab-content">
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">👤 Profile</div>
+      <div class="customize-row">
+        <span style="font-size:13px">Your name</span>
+        <input type="text" class="field-input" id="user-name" placeholder="Enter your name" style="width:160px;text-align:left" oninput="updateProfile()">
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Age</span>
+        <input type="number" class="field-input" id="user-age" placeholder="e.g. 32" style="width:80px">
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Weight</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="user-weight" placeholder="e.g. 68" style="width:80px">
+          <span style="font-size:12px;color:var(--text-muted)">kg</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Height</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="user-height" placeholder="e.g. 170" style="width:80px">
+          <span style="font-size:12px;color:var(--text-muted)">cm</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🎯 Daily goals</div>
+      <div class="customize-row">
+        <span style="font-size:13px">Daily step goal</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-steps" value="10000" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">steps</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Calorie target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-calories" placeholder="e.g. 2000" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">kcal</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Protein target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-protein" placeholder="e.g. 140" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">g</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Carbs target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-carbs" placeholder="e.g. 200" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">g</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Fat target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-fat" placeholder="e.g. 65" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">g</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Fibre target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-fibre" placeholder="e.g. 30" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">g</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Water target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-water" value="2.5" step="0.5" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">L</span>
+        </div>
+      </div>
+      <div class="customize-row">
+        <span style="font-size:13px">Sleep target</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" class="field-input" id="goal-sleep" value="8" step="0.5" style="width:100px" oninput="saveGoals()">
+          <span style="font-size:12px;color:var(--text-muted)">hrs</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">🔔 Reminders</div>
+      <div class="customize-row"><span style="font-size:13px">Step alert when behind at 8pm</span><div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-dot"></div></div></div>
+      <div class="customize-row"><span style="font-size:13px">Compensation alert for missed days</span><div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-dot"></div></div></div>
+      <div class="customize-row"><span style="font-size:13px">Hydration nudge every 2 hours</span><div class="toggle" onclick="this.classList.toggle('on')"><div class="toggle-dot"></div></div></div>
+      <div class="customize-row"><span style="font-size:13px">Meal logging reminder at 1pm</span><div class="toggle on" onclick="this.classList.toggle('on')"><div class="toggle-dot"></div></div></div>
+      <div class="customize-row"><span style="font-size:13px">Weekly bloodwork review reminder</span><div class="toggle" onclick="this.classList.toggle('on')"><div class="toggle-dot"></div></div></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn btn-neon" onclick="saveAll()">💾 Save all data</button>
+      <span class="save-status" id="save-status">Saved!</span>
+      <button class="btn btn-ghost btn-sm" onclick="clearAll()" style="margin-left:auto;color:var(--red);border-color:rgba(255,71,87,0.3)">Clear all data</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ---- BLOODWORK MARKERS with reference ranges ----
+const BW_MARKERS = [
+  // Inflammation & Cardiac
+  { name: 'hs-CRP', unit: 'mg/L', low: 0, high: 0.9 },
+  { name: 'Homocysteine', unit: 'µmol/L', low: 0, high: 9 },
+  // Anemia & Nutrition
+  { name: 'Ferritin', unit: 'ng/mL', low: 30, high: 400 },
+  { name: 'Iron', unit: 'µg/dL', low: 59, high: 158 },
+  { name: 'Vitamin D (25-OH)', unit: 'ng/mL', low: 30, high: 108 },
+  // Blood Sugar
+  { name: 'Fasting Glucose', unit: 'mg/dL', low: 70, high: 100 },
+  { name: 'Haemoglobin A1c', unit: '%', low: 0, high: 5.6 },
+  { name: 'Fasting Insulin', unit: 'µU/mL', low: 2.6, high: 24.9 },
+  // Liver
+  { name: 'ALT', unit: 'U/L', low: 0, high: 41 },
+  { name: 'AST', unit: 'U/L', low: 0, high: 40 },
+  { name: 'GGT', unit: 'U/L', low: 0, high: 60 },
+  // Kidney
+  { name: 'Creatinine', unit: 'mg/dL', low: 0.70, high: 1.20 },
+  { name: 'eGFR', unit: 'mL/min/1.73m²', low: 60, high: 999 },
+  // Thyroid
+  { name: 'TSH', unit: 'µIU/mL', low: 0.111, high: 4.910 },
+  { name: 'Free T3', unit: 'pg/mL', low: 2.0, high: 4.4 },
+  { name: 'Free T4', unit: 'ng/dL', low: 0.9, high: 1.7 },
+  // Hormones
+  { name: 'Total Testosterone', unit: 'ng/dL', low: 204.7, high: 1450.1 },
+  { name: 'Free Testosterone', unit: 'ng/dL', low: 3.55, high: 36.86 },
+  { name: 'Estradiol', unit: 'pg/mL', low: 25.8, high: 60.7 },
+  { name: 'DHEA-S', unit: 'µg/dL', low: 44.3, high: 331.0 },
+  { name: 'SHBG', unit: 'nmol/L', low: 19.3, high: 76.4 },
+  { name: 'Cortisol (AM)', unit: 'µg/dL', low: 6.2, high: 19.4 },
+  // CBC
+  { name: 'Haemoglobin', unit: 'g/dL', low: 13.7, high: 17.5 },
+  { name: 'MCV', unit: 'fL', low: 79.0, high: 92.2 },
+  { name: 'WBC', unit: 'x10³/µL', low: 4.23, high: 9.07 },
+  { name: 'Platelets', unit: 'x10³/µL', low: 129, high: 326 },
+  // Tumor
+  { name: 'PSA (Total)', unit: 'ng/mL', low: 0, high: 3.89 },
+];
+
+let customMarkers = [];
+
+function buildBloodworkRows() {
+  const container = document.getElementById('bloodwork-rows');
+  container.innerHTML = '';
+  const allMarkers = [...BW_MARKERS, ...customMarkers];
+  allMarkers.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'bw-row';
+    row.id = 'bw-row-' + i;
+    const rangeStr = m.low === 0 && m.high === 999 ? `>${m.low}` :
+                     m.low === 0 ? `<${m.high}` :
+                     `${m.low}–${m.high}`;
+    row.innerHTML = `
+      <span class="bw-name">${m.name} <span style="font-size:10px;color:var(--text-muted)">(${rangeStr} ${m.unit})</span></span>
+      <div class="bw-val-wrap">
+        <input type="number" class="field-input" id="bw-val-${i}" placeholder="—" style="width:80px" oninput="updateBWStatus(${i})">
+        <span class="bw-range-label">${m.unit}</span>
+        <span class="badge badge-gray" id="bw-status-${i}">Enter value</span>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+let customMarkerCount = 0;
+function addBloodworkRow() {
+  const name = prompt('Marker name (e.g. Iron):');
+  if (!name) return;
+  const unit = prompt('Unit (e.g. µg/dL):') || '';
+  const low = parseFloat(prompt('Low end of normal range:')) || 0;
+  const high = parseFloat(prompt('High end of normal range:')) || 999;
+  customMarkers.push({ name, unit, low, high });
+  buildBloodworkRows();
+}
+
+function updateBWStatus(i) {
+  const allMarkers = [...BW_MARKERS, ...customMarkers];
+  const m = allMarkers[i];
+  const val = parseFloat(document.getElementById('bw-val-' + i).value);
+  const badge = document.getElementById('bw-status-' + i);
+  if (isNaN(val)) { badge.className = 'badge badge-gray'; badge.textContent = 'Enter value'; return; }
+  let status, cls;
+  if (val < m.low) { status = 'Low'; cls = 'badge-red'; }
+  else if (val > m.high && m.high !== 999) { status = 'High'; cls = 'badge-red'; }
+  else { status = 'Normal'; cls = 'badge-green'; }
+  badge.className = 'badge ' + cls;
+  badge.textContent = status;
+  updateOverviewBloodwork();
+}
+
+function updateOverviewBloodwork() {
+  const allMarkers = [...BW_MARKERS, ...customMarkers];
+  const flags = [];
+  allMarkers.forEach((m, i) => {
+    const el = document.getElementById('bw-val-' + i);
+    if (!el) return;
+    const val = parseFloat(el.value);
+    if (isNaN(val)) return;
+    if (val < m.low || (val > m.high && m.high !== 999)) {
+      flags.push({ name: m.name, val, unit: m.unit, low: val < m.low });
+    }
+  });
+  const cont = document.getElementById('ov-bloodwork-summary');
+  if (flags.length === 0) {
+    cont.innerHTML = '<div style="font-size:12px;color:var(--teal);padding:12px 0">✅ All entered values within normal range</div>';
+  } else {
+    cont.innerHTML = flags.map(f => `
+      <div class="bw-row" style="padding:8px 0">
+        <span class="bw-name" style="font-size:12px">${f.name}</span>
+        <span class="badge ${f.low ? 'badge-red' : 'badge-amber'}">${f.low ? 'Low' : 'High'}: ${f.val} ${f.unit || ''}</span>
+      </div>
+    `).join('');
+  }
+}
+
+// ---- STEPS ----
+function getStepGoal() {
+  return parseInt(document.getElementById('goal-steps').value) || 10000;
+}
+
+function updateSteps() {
+  const val = parseInt(document.getElementById('steps-today-input').value) || 0;
+  const goal = getStepGoal();
+  const pct = Math.min(100, Math.round(val / goal * 100));
+  const remaining = Math.max(0, goal - val);
+
+  document.getElementById('steps-today-display').textContent = val ? val.toLocaleString() : '—';
+  document.getElementById('steps-pct-display').textContent = val ? pct + '%' : '—%';
+  document.getElementById('steps-main-bar').style.width = pct + '%';
+  document.getElementById('steps-goal-display').textContent = goal.toLocaleString();
+  document.getElementById('steps-midpoint').textContent = Math.round(goal / 2).toLocaleString();
+  document.getElementById('steps-max-label').textContent = goal.toLocaleString();
+
+  // Update overview
+  document.getElementById('ov-steps').textContent = val ? val.toLocaleString() : '—';
+  document.getElementById('ov-step-bar').style.width = pct + '%';
+  document.getElementById('ov-step-pct').textContent = val ? `${pct}% of ${goal.toLocaleString()} goal` : 'Enter your steps in the Steps tab';
+
+  const alertBox = document.getElementById('step-main-alert');
+  const ovAlert = document.getElementById('step-alert-overview');
+
+  if (!val) { alertBox.style.display = 'none'; ovAlert.style.display = 'none'; return; }
+
+  if (val >= goal) {
+    alertBox.className = 'alert-box alert-neon';
+    alertBox.style.display = 'flex';
+    document.getElementById('step-alert-icon').textContent = '🎉';
+    document.getElementById('step-alert-title').textContent = 'Goal reached!';
+    document.getElementById('step-alert-title').style.color = 'var(--neon)';
+    document.getElementById('step-alert-body').textContent = `You hit ${val.toLocaleString()} steps today — ${(val - goal).toLocaleString()} over goal. Great work!`;
+    ovAlert.style.display = 'none';
+  } else {
+    const mins = Math.round(remaining / 92);
+    alertBox.className = 'alert-box alert-amber';
+    alertBox.style.display = 'flex';
+    document.getElementById('step-alert-icon').textContent = '⚠️';
+    document.getElementById('step-alert-title').textContent = `${remaining.toLocaleString()} steps remaining today`;
+    document.getElementById('step-alert-title').style.color = 'var(--amber)';
+    document.getElementById('step-alert-body').textContent = `You've done ${val.toLocaleString()} steps. At ~92 steps/min that's about ${mins} minutes of walking to close the gap.`;
+    ovAlert.style.display = 'flex';
+    document.getElementById('overview-alert-title').textContent = `${remaining.toLocaleString()} steps behind today`;
+    document.getElementById('overview-alert-body').textContent = `You've walked ${val.toLocaleString()} steps. Need ${mins} more minutes of walking to hit your ${goal.toLocaleString()} goal.`;
+  }
+  updateCompensation();
+}
+
+function updateWeekChart() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const goal = getStepGoal();
+  const vals = days.map(d => parseInt(document.getElementById('day-' + d).value) || 0);
+  const maxVal = Math.max(...vals, goal);
+
+  days.forEach((d, i) => {
+    const v = vals[i];
+    const bar = document.getElementById('bar-' + d);
+    const lbl = document.getElementById('lbl-' + d);
+    if (v === 0) {
+      bar.style.height = '4px';
+      bar.style.background = 'var(--surface3)';
+    } else {
+      const h = Math.max(8, Math.round(v / maxVal * 100));
+      bar.style.height = h + '%';
+      bar.style.background = v >= goal ? 'var(--neon)' : v >= goal * 0.7 ? 'var(--amber)' : 'var(--red)';
+    }
+    lbl.innerHTML = d + '<br>' + (v ? v.toLocaleString() : '—');
+  });
+
+  // Sync overview chart
+  const ovBars = document.querySelectorAll('#overview-week-bars .bar-col');
+  days.forEach((d, i) => {
+    const v = vals[i];
+    const bar = ovBars[i]?.querySelector('.bar');
+    const dayLbl = ovBars[i]?.querySelector('.bar-day');
+    if (bar) {
+      bar.style.height = v ? Math.max(8, Math.round(v / maxVal * 100)) + '%' : '4px';
+      bar.style.background = v >= goal ? 'var(--neon)' : v >= goal * 0.7 ? 'var(--amber)' : v > 0 ? 'var(--red)' : 'var(--surface3)';
+      bar.style.opacity = '1';
+    }
+    if (dayLbl) dayLbl.innerHTML = d + '<br>' + (v ? v.toLocaleString() : '—');
+  });
+
+  updateCompensation();
+}
+
+function updateCompensation() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const goal = getStepGoal();
+  const missed = days.filter(d => {
+    const v = parseInt(document.getElementById('day-' + d).value) || 0;
+    return v > 0 && v < goal;
+  });
+  const card = document.getElementById('compensation-card');
+  const body = document.getElementById('compensation-body');
+  if (missed.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const msgs = missed.map(d => {
+    const v = parseInt(document.getElementById('day-' + d).value);
+    const deficit = goal - v;
+    return `• <strong>${d}</strong>: missed by ${deficit.toLocaleString()} steps — add ~${Math.round(deficit / 92)} min walking on your next active day`;
+  });
+  body.innerHTML = msgs.join('<br>') + '<br><br><span style="color:var(--text-muted)">Tip: spread your compensation over 2–3 days to avoid joint strain. Aim for no more than 15,000 steps on any single makeup day.</span>';
+}
+
+// ---- NUTRITION ----
+function updateNutrition() {
+  const eaten = parseInt(document.getElementById('cal-eaten').value) || 0;
+  const target = parseInt(document.getElementById('goal-calories').value) || 0;
+  document.getElementById('cal-target-display').textContent = target || '—';
+  if (target) {
+    const pct = Math.min(100, Math.round(eaten / target * 100));
+    document.getElementById('cal-bar').style.width = pct + '%';
+    const rem = Math.max(0, target - eaten);
+    document.getElementById('cal-remaining-sub').textContent = rem > 0 ? `${rem} kcal remaining` : `Goal reached!`;
+    document.getElementById('ov-cal-bar').style.width = pct + '%';
+    document.getElementById('ov-cal-sub').textContent = `${eaten} / ${target} kcal (${pct}%)`;
+  }
+}
+
+function updateWater() {
+  const drunk = parseFloat(document.getElementById('water-drunk').value) || 0;
+  const target = parseFloat(document.getElementById('goal-water').value) || 2.5;
+  document.getElementById('water-target-display').textContent = target;
+  const pct = Math.min(100, Math.round(drunk / target * 100));
+  document.getElementById('water-bar').style.width = pct + '%';
+  document.getElementById('water-sub').textContent = drunk >= target ? '💧 Hydration goal reached!' : `${(target - drunk).toFixed(1)}L to go`;
+}
+
+function updateMacros() {
+  const fields = ['protein','carbs','fat','fibre'];
+  const goals = {
+    protein: parseInt(document.getElementById('goal-protein').value) || 0,
+    carbs: parseInt(document.getElementById('goal-carbs').value) || 0,
+    fat: parseInt(document.getElementById('goal-fat').value) || 0,
+    fibre: parseInt(document.getElementById('goal-fibre').value) || 0,
+  };
+  fields.forEach(f => {
+    const val = parseInt(document.getElementById('mac-' + f).value) || 0;
+    const g = goals[f];
+    const pct = g ? Math.min(100, Math.round(val / g * 100)) : 0;
+    document.getElementById('mac-' + f + '-bar').style.width = pct + '%';
+    document.getElementById('mac-' + f + '-target').textContent = g || '—';
+  });
+  // Update overview
+  const p = document.getElementById('mac-protein').value || '—';
+  const c = document.getElementById('mac-carbs').value || '—';
+  const ft = document.getElementById('mac-fat').value || '—';
+  document.getElementById('ov-protein').textContent = p + 'g';
+  document.getElementById('ov-carbs').textContent = c + 'g';
+  document.getElementById('ov-fat').textContent = ft + 'g';
+  const gp = goals.protein || 1, gc = goals.carbs || 1, gf = goals.fat || 1;
+  document.getElementById('ov-protein-bar').style.width = Math.min(100, Math.round((parseInt(p)||0)/gp*100)) + '%';
+  document.getElementById('ov-carbs-bar').style.width = Math.min(100, Math.round((parseInt(c)||0)/gc*100)) + '%';
+  document.getElementById('ov-fat-bar').style.width = Math.min(100, Math.round((parseInt(ft)||0)/gf*100)) + '%';
+}
+
+// ---- AURA RING ----
+function updateSleepBar() {
+  const total = parseFloat(document.getElementById('sleep-total').value) || 0;
+  const deep = parseFloat(document.getElementById('sleep-deep').value) || 0;
+  const rem = parseFloat(document.getElementById('sleep-rem').value) || 0;
+  const awake = parseFloat(document.getElementById('sleep-awake').value) || 0;
+  if (!total) return;
+  const light = Math.max(0, total - deep - rem - awake);
+  const bar = document.getElementById('sleep-stage-bar');
+  bar.innerHTML = '';
+  const segs = [
+    { pct: deep/total*100, color: 'var(--blue)' },
+    { pct: rem/total*100, color: 'var(--purple)' },
+    { pct: light/total*100, color: 'rgba(55,138,221,0.45)' },
+    { pct: awake/total*100, color: '#444' },
+  ];
+  segs.forEach(s => {
+    if (s.pct <= 0) return;
+    const d = document.createElement('div');
+    d.className = 'sleep-seg';
+    d.style.width = s.pct.toFixed(1) + '%';
+    d.style.background = s.color;
+    bar.appendChild(d);
+  });
+}
+
+function updateAuraOverview() {
+  const readiness = document.getElementById('aura-readiness').value;
+  const sleepScore = document.getElementById('aura-sleep-score').value;
+  const hrv = document.getElementById('aura-hrv').value;
+  const temp = document.getElementById('aura-temp').value;
+  const cont = document.getElementById('ov-aura-summary');
+  if (!readiness && !sleepScore && !hrv) {
+    cont.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:16px 0">Enter your Aura Ring data in the Aura Ring tab</div>';
+    return;
+  }
+  cont.innerHTML = `
+    <div class="ring-row" style="margin-bottom:8px">
+      <div class="ring-icon" style="background:rgba(200,241,53,0.1)">⚡</div>
+      <div class="ring-bar">
+        <div class="ring-label">Readiness</div>
+        <div class="ring-val" style="color:var(--neon)">${readiness || '—'} / 100</div>
+        <div class="progress-bg" style="margin-top:4px"><div class="progress-fill fill-neon" style="width:${readiness || 0}%"></div></div>
+      </div>
+    </div>
+    <div class="ring-row" style="margin-bottom:8px">
+      <div class="ring-icon" style="background:rgba(55,138,221,0.1)">🌙</div>
+      <div class="ring-bar">
+        <div class="ring-label">Sleep score</div>
+        <div class="ring-val" style="color:var(--blue)">${sleepScore || '—'} / 100</div>
+        <div class="progress-bg" style="margin-top:4px"><div class="progress-fill fill-blue" style="width:${sleepScore || 0}%"></div></div>
+      </div>
+    </div>
+    ${hrv ? `<div class="ring-row"><div class="ring-icon" style="background:rgba(29,158,117,0.1)">📈</div><div class="ring-bar"><div class="ring-label">HRV</div><div class="ring-val">${hrv} ms</div></div></div>` : ''}
+  `;
+}
+
+function updateHRVChart() {
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const vals = days.map(d => parseInt(document.getElementById('hrv-' + d).value) || 0);
+  const maxVal = Math.max(...vals, 1);
+  days.forEach(d => {
+    const v = parseInt(document.getElementById('hrv-' + d).value) || 0;
+    const bar = document.getElementById('hrv-bar-' + d);
+    const lbl = document.getElementById('hrv-lbl-' + d);
+    bar.style.height = v ? Math.max(8, Math.round(v / maxVal * 100)) + '%' : '4px';
+    bar.style.background = v ? 'var(--purple)' : 'var(--surface3)';
+    lbl.innerHTML = d + '<br>' + (v || '—');
+  });
+}
+
+// ---- GOALS / SAVE ----
+function saveGoals() {
+  updateNutrition();
+  updateWater();
+  updateMacros();
+  updateSteps();
+  updateWeekChart();
+  const g = getStepGoal();
+  document.getElementById('steps-goal-display').textContent = g.toLocaleString();
+  document.getElementById('steps-midpoint').textContent = Math.round(g / 2).toLocaleString();
+  document.getElementById('steps-max-label').textContent = g.toLocaleString();
+}
+
+function updateProfile() {
+  const name = document.getElementById('user-name').value;
+  const initials = name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) || '?';
+  document.getElementById('avatar-initials').textContent = initials;
+}
+
+function promptName() {
+  const name = prompt('What is your name?');
+  if (name) { document.getElementById('user-name').value = name; updateProfile(); }
+}
+
+function saveAll() {
+  const status = document.getElementById('save-status');
+  status.classList.add('show');
+  setTimeout(() => status.classList.remove('show'), 2000);
+}
+
+function clearAll() {
+  if (!confirm('Clear all entered data? This cannot be undone.')) return;
+  document.querySelectorAll('input[type=number], input[type=text], input[type=date]').forEach(el => {
+    if (!['goal-steps','goal-water','goal-sleep'].includes(el.id)) el.value = '';
+  });
+  document.querySelectorAll('.editable').forEach(el => el.value = '');
+  document.getElementById('avatar-initials').textContent = '?';
+  buildBloodworkRows();
+  updateSteps();
+  updateWeekChart();
+  updateHRVChart();
+}
+
+// ---- TAB SWITCHING ----
+function switchTab(name) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const tabs = ['overview','steps','nutrition','bloodwork','aura','settings'];
+  const idx = tabs.indexOf(name);
+  if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  const el = document.getElementById('tab-' + name);
+  if (el) el.classList.add('active');
+}
+
+// ---- DATE ----
+function updateDate() {
+  const d = new Date();
+  const opts = { weekday:'short', day:'numeric', month:'short', year:'numeric' };
+  document.getElementById('date-display').textContent = d.toLocaleDateString('en-AU', opts);
+}
+
+// ---- OURA PRE-FILL ----
+(function() {
+  const oura = {
+    readiness: 58,
+    sleepScore: 72,
+    hrv: 88,
+    temp: 0.37,
+    sleepTotal: 5.79,
+    sleepDeep: 1.08,
+    sleepRem: 1.24,
+    sleepAwake: 2.04,
+    hrvWeek:   { Mon: 16, Tue: 19, Wed: 17, Thu: 14, Fri: 10, Sat: 12, Sun: 9 },
+    stepsToday: 4113,
+    stepsWeek: { Sun: 15463, Mon: 10114, Tue: 17150, Wed: 7744, Thu: 11691, Fri: 14429, Sat: 4113 }
+  };
+
+  function set(id, val) {
+    const el = document.getElementById(id);
+    if (el && val !== null && val !== undefined) el.value = val;
+  }
+
+  // Aura Ring tab
+  set('aura-readiness',   oura.readiness);
+  set('aura-sleep-score', oura.sleepScore);
+  set('aura-hrv',         oura.hrv);
+  set('aura-temp',        oura.temp);
+  set('sleep-total',      oura.sleepTotal);
+  set('sleep-deep',       oura.sleepDeep);
+  set('sleep-rem',        oura.sleepRem);
+  set('sleep-awake',      oura.sleepAwake);
+
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) {
+    if (oura.hrvWeek[d] != null) set('hrv-' + d, oura.hrvWeek[d]);
+  });
+
+  // Steps tab
+  if (oura.stepsToday != null) {
+    set('steps-today-input', oura.stepsToday);
+  }
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) {
+    if (oura.stepsWeek[d] != null) set('day-' + d, oura.stepsWeek[d]);
+  });
+
+  updateAuraOverview();
+  updateSleepBar();
+  updateHRVChart();
+  updateSteps();
+  updateWeekChart();
+})();
+
+// ---- INIT ----
+buildBloodworkRows();
+
+// ---- BLOODWORK PRE-FILL (Vibrant America, 09 Apr 2025) ----
+(function() {
+  // Index matches BW_MARKERS order above
+  const bwVals = [
+    3.9,    // hs-CRP
+    11,     // Homocysteine
+    193,    // Ferritin
+    104,    // Iron
+    33.7,   // Vitamin D
+    99,     // Fasting Glucose
+    5.3,    // HbA1c
+    15.6,   // Fasting Insulin
+    29,     // ALT
+    21,     // AST
+    71,     // GGT
+    0.96,   // Creatinine
+    90,     // eGFR
+    1.580,  // TSH
+    2.7,    // Free T3
+    0.9,    // Free T4
+    503,    // Total Testosterone
+    7.95,   // Free Testosterone
+    9,      // Estradiol (<10, flagged Low)
+    15.0,   // DHEA-S
+    49.5,   // SHBG
+    9.5,    // Cortisol
+    15.2,   // Haemoglobin
+    95.0,   // MCV
+    6.12,   // WBC
+    223,    // Platelets
+    0.73,   // PSA
+  ];
+  bwVals.forEach(function(v, i) {
+    var el = document.getElementById('bw-val-' + i);
+    if (el) { el.value = v; updateBWStatus(i); }
+  });
+  var dateEl = document.getElementById('bw-date');
+  if (dateEl) dateEl.value = '2025-04-09';
+})();
+
+updateDate();
+</script>
+</body>
+</html>
