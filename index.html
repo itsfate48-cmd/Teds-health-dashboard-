@@ -1244,54 +1244,40 @@ function updateDate() {
   document.getElementById('date-display').textContent = d.toLocaleDateString('en-AU', opts);
 }
 
-// ---- OURA PRE-FILL ----
+// ---- OURA DATA LOADER (reads oura_data.json for live daily updates) ----
 (function() {
-  const oura = {
-    readiness: 58,
-    sleepScore: 72,
-    hrv: 88,
-    temp: 0.37,
-    sleepTotal: 5.79,
-    sleepDeep: 1.08,
-    sleepRem: 1.24,
-    sleepAwake: 2.04,
-    hrvWeek:   { Mon: 16, Tue: 19, Wed: 17, Thu: 14, Fri: 10, Sat: 12, Sun: 9 },
-    stepsToday: 4113,
-    stepsWeek: { Sun: 15463, Mon: 10114, Tue: 17150, Wed: 7744, Thu: 11691, Fri: 14429, Sat: 4113 }
-  };
-
   function set(id, val) {
-    const el = document.getElementById(id);
+    var el = document.getElementById(id);
     if (el && val !== null && val !== undefined) el.value = val;
   }
 
-  // Aura Ring tab
-  set('aura-readiness',   oura.readiness);
-  set('aura-sleep-score', oura.sleepScore);
-  set('aura-hrv',         oura.hrv);
-  set('aura-temp',        oura.temp);
-  set('sleep-total',      oura.sleepTotal);
-  set('sleep-deep',       oura.sleepDeep);
-  set('sleep-rem',        oura.sleepRem);
-  set('sleep-awake',      oura.sleepAwake);
+  function applyOura(oura) {
+    set('aura-readiness',   oura.readiness_score);
+    set('aura-sleep-score', oura.sleep_score);
+    set('aura-hrv',         oura.hrv_ms);
+    set('aura-temp',        oura.temp_deviation_c);
+    set('sleep-total',      oura.sleep_total_hrs);
+    set('sleep-deep',       oura.sleep_deep_hrs);
+    set('sleep-rem',        oura.sleep_rem_hrs);
+    set('sleep-awake',      oura.sleep_awake_hrs);
 
-  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) {
-    if (oura.hrvWeek[d] != null) set('hrv-' + d, oura.hrvWeek[d]);
-  });
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) {
+      if (oura.hrv_week   && oura.hrv_week[d]   != null) set('hrv-' + d,  oura.hrv_week[d]);
+      if (oura.steps_week && oura.steps_week[d] != null) set('day-' + d,  oura.steps_week[d]);
+    });
+    if (oura.steps_today != null) set('steps-today-input', oura.steps_today);
 
-  // Steps tab
-  if (oura.stepsToday != null) {
-    set('steps-today-input', oura.stepsToday);
+    updateAuraOverview();
+    updateSleepBar();
+    updateHRVChart();
+    updateSteps();
+    updateWeekChart();
   }
-  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function(d) {
-    if (oura.stepsWeek[d] != null) set('day-' + d, oura.stepsWeek[d]);
-  });
 
-  updateAuraOverview();
-  updateSleepBar();
-  updateHRVChart();
-  updateSteps();
-  updateWeekChart();
+  fetch('oura_data.json?t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(applyOura)
+    .catch(function() { console.warn('oura_data.json not found — no Oura data loaded'); });
 })();
 
 // ---- INIT ----

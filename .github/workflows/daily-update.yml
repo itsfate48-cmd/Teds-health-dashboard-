@@ -1,0 +1,35 @@
+name: Daily Oura Data Update
+
+on:
+  schedule:
+    - cron: '0 23 * * *'  # 9am AEST (UTC+10)
+  workflow_dispatch:       # Allow manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch Oura data
+        env:
+          OURA_API_KEY: ${{ secrets.OURA_API_KEY }}
+        run: python oura_fetch.py
+
+      - name: Commit and push updated data
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "Daily Update Bot"
+          git add oura_data.json
+          git diff --staged --quiet || git commit -m "chore: daily Oura update $(date -u +%Y-%m-%d)"
+          git push
