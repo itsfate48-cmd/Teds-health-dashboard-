@@ -1,0 +1,30 @@
+{
+  "fetch_date": "2026-06-20",
+  "readiness_score": 58,
+  "sleep_score": 72,
+  "hrv_ms": 88,
+  "temp_deviation_c": 0.37,
+  "sleep_total_hrs": 5.79,
+  "sleep_deep_hrs": 1.08,
+  "sleep_rem_hrs": 1.24,
+  "sleep_awake_hrs": 2.04,
+  "hrv_week": {
+    "Sun": 9,
+    "Mon": 16,
+    "Tue": 19,
+    "Wed": 17,
+    "Thu": 14,
+    "Fri": 10,
+    "Sat": 12
+  },
+  "steps_today": 4113,
+  "steps_week": {
+    "Sun": 15463,
+    "Mon": 10114,
+    "Tue": 17150,
+    "Wed": 7744,
+    "Thu": 11691,
+    "Fri": 14429,
+    "Sat": 4113
+  }
+}
